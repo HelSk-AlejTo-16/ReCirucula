@@ -29,6 +29,13 @@ import { PublicationsModule } from './modules/publications/publications.module';
       imports: [ConfigModule],
       useFactory: (config: ConfigService) =>
         config.get<TypeOrmModuleOptions>('database')!,
+      useFactory: (config: ConfigService) => {
+        const dbConfig = config.get('database');
+        if (!dbConfig) {
+          throw new Error('La configuración de base de datos no existe');
+        }
+        return dbConfig;
+      },
       inject: [ConfigService],
     }),
 
