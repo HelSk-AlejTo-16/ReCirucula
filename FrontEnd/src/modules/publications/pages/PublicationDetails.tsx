@@ -7,9 +7,10 @@ import './PublicationDetails.css'
 interface PublicationDetailsProps {
   publicationId: string
   onBack: () => void
+  onEdit: () => void
 }
 
-export default function PublicationDetails({ publicationId, onBack }: PublicationDetailsProps) {
+export default function PublicationDetails({ publicationId, onBack, onEdit }: PublicationDetailsProps) {
   const [pub, setPub] = useState<any>(null)
   const [activeImageIdx, setActiveImageIdx] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -261,8 +262,11 @@ export default function PublicationDetails({ publicationId, onBack }: Publicatio
 
       {/* Botones de acción del propietario */}
       {pub.estado !== 'ARCHIVADO' && (
-        <div className="action-row">
-          <button className="btn-secondary" onClick={handleArchive} disabled={archiving}>
+        <div className="action-row" style={{ display: 'flex', gap: '12px' }}>
+          <button className="btn-primary" onClick={onEdit} style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+            Editar publicación
+          </button>
+          <button className="btn-secondary" onClick={handleArchive} disabled={archiving} style={{ flex: '1' }}>
             <Archive size={18} /> {archiving ? 'Archivando...' : 'Archivar publicación'}
           </button>
         </div>

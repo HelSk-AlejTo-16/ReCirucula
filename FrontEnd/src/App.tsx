@@ -24,7 +24,7 @@ const CATEGORIAS = [
 ]
 
 function App() {
-  const [view, setView] = useState<'list' | 'create' | 'details'>('list')
+  const [view, setView] = useState<'list' | 'create' | 'details' | 'edit'>('list')
   const [activePublicationId, setActivePublicationId] = useState<string>('')
 
   // Estados del listado
@@ -174,8 +174,19 @@ function App() {
       {/* Ruteador de Vistas */}
       {view === 'create' && <CreatePublication onBack={() => setView('list')} />}
 
+      {view === 'edit' && (
+        <CreatePublication
+          editId={activePublicationId}
+          onBack={() => setView('details')}
+        />
+      )}
+
       {view === 'details' && (
-        <PublicationDetails publicationId={activePublicationId} onBack={() => setView('list')} />
+        <PublicationDetails
+          publicationId={activePublicationId}
+          onBack={() => setView('list')}
+          onEdit={() => setView('edit')}
+        />
       )}
 
       {view === 'list' && (

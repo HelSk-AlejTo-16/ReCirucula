@@ -6,7 +6,7 @@ async function seed() {
     host: 'localhost',
     port: 5432,
     user: 'postgres',
-    password: 'marco',
+    password: 'password',
     database: 'ReCircula',
   });
 

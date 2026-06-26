@@ -7,7 +7,7 @@ async function setup() {
     host: 'localhost',
     port: 5432,
     user: 'postgres',
-    password: 'marco',
+    password: 'password',
     database: 'postgres',
   });
 
@@ -39,7 +39,7 @@ async function setup() {
     host: 'localhost',
     port: 5432,
     user: 'postgres',
-    password: 'marco',
+    password: 'password',
     database: 'ReCircula',
   });
 

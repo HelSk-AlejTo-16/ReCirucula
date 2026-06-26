@@ -54,6 +54,10 @@ export class CreatePublicationDto {
   descripcion: string;
 
   @IsString()
+  @IsOptional()
+  condition?: string;
+
+  @IsString()
   @IsNotEmpty()
   categoria: string;
 

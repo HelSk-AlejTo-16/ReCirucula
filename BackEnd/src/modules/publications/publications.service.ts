@@ -126,7 +126,9 @@ export class PublicationsService {
     // 5. Crear la publicación
     const publicacion = new Publication();
     publicacion.titulo = dto.titulo;
-    publicacion.descripcion = dto.descripcion;
+    publicacion.descripcion = dto.condition
+      ? `[Condición: ${dto.condition}] ${dto.descripcion}`
+      : dto.descripcion;
     publicacion.categoria = dto.categoria;
     publicacion.modalidad = dto.modalidad;
     // Si no es venta, se ignora el precio

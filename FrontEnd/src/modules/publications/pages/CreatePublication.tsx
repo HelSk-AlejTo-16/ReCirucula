@@ -26,7 +26,7 @@ const CATEGORIAS = [
   'Otros',
 ]
 
-export default function CreatePublication({ onBack }: { onBack?: () => void }) {
+export default function CreatePublication({ onBack, editId }: { onBack?: () => void; editId?: string }) {
   // Silent Login para desarrollo (RF-01)
   useEffect(() => {
     const fetchToken = async () => {
@@ -54,11 +54,45 @@ export default function CreatePublication({ onBack }: { onBack?: () => void }) {
     fetchToken()
   }, [])
 
+  // Cargar datos en modo edición
+  useEffect(() => {
+    if (editId) {
+      const loadPubData = async () => {
+        try {
+          setLoading(true)
+          const data = await publicationsApi.getPublicationDetail(editId)
+          setTitulo(data.titulo)
+          setCategoria(data.categoria)
+          setModalidad(data.modalidad)
+          setPrecio(data.precio ? data.precio.toString() : '')
+          setLatitud(data.ubicacion.latitud.toString())
+          setLongitud(data.ubicacion.longitud.toString())
+          setDireccionReferencia(data.direccionReferencia || '')
+          
+          // Parsear la condición si viene en el formato "[Condición: X] descripcion"
+          const match = data.descripcion.match(/^\[Condición:\s*([^\]]+)\]\s*(.*)/)
+          if (match) {
+            setCondicion(match[1])
+            setDescripcion(match[2])
+          } else {
+            setDescripcion(data.descripcion)
+          }
+        } catch (e: any) {
+          setError('Error al cargar la publicación: ' + e.message)
+        } finally {
+          setLoading(false)
+        }
+      }
+      loadPubData()
+    }
+  }, [editId])
+
   const [titulo, setTitulo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [categoria, setCategoria] = useState(CATEGORIAS[0])
   const [modalidad, setModalidad] = useState('DONACION')
   const [precio, setPrecio] = useState('')
+  const [condicion, setCondicion] = useState('Buen estado')
   const [latitud, setLatitud] = useState('21.1561') // Defecto Dolores Hidalgo
   const [longitud, setLongitud] = useState('-101.3562')
   const [direccionReferencia, setDireccionReferencia] = useState('')
@@ -178,46 +212,63 @@ export default function CreatePublication({ onBack }: { onBack?: () => void }) {
       setLoading(false)
       return
     }
-
     try {
-      const formData = new FormData()
-      formData.append('titulo', titulo)
-      formData.append('descripcion', descripcion)
-      formData.append('categoria', categoria)
-      formData.append('modalidad', modalidad)
-      if (precio) formData.append('precio', precio)
+      if (editId) {
+        const updateData = {
+          titulo,
+          descripcion,
+          condition: condicion,
+          categoria,
+          modalidad,
+          precio: (modalidad === 'VENTA' || modalidad === 'VENTA_PIEZAS') ? parseFloat(precio) : null,
+          direccionReferencia,
+          ubicacion: {
+            latitud: parseFloat(latitud),
+            longitud: parseFloat(longitud),
+          }
+        }
+        await publicationsApi.updatePublication(editId, updateData, token)
+      } else {
+        const formData = new FormData()
+        formData.append('titulo', titulo)
+        formData.append('descripcion', descripcion)
+        formData.append('condition', condicion)
+        formData.append('categoria', categoria)
+        formData.append('modalidad', modalidad)
+        if (precio) formData.append('precio', precio)
 
-      // Ubicación estructurada
-      formData.append(
-        'ubicacion',
-        JSON.stringify({
-          latitud: parseFloat(latitud),
-          longitud: parseFloat(longitud),
+        // Ubicación estructurada
+        formData.append(
+          'ubicacion',
+          JSON.stringify({
+            latitud: parseFloat(latitud),
+            longitud: parseFloat(longitud),
+          })
+        )
+
+        if (direccionReferencia) {
+          formData.append('direccionReferencia', direccionReferencia)
+        }
+
+        // Componentes estructurados
+        if (componentes.length > 0) {
+          formData.append('componentes', JSON.stringify(componentes))
+        }
+
+        // Agregar imágenes al form data
+        images.forEach((file) => {
+          formData.append('imagenes', file)
         })
-      )
 
-      if (direccionReferencia) {
-        formData.append('direccionReferencia', direccionReferencia)
+        await publicationsApi.createPublication(formData, token)
       }
-
-      // Componentes estructurados
-      if (componentes.length > 0) {
-        formData.append('componentes', JSON.stringify(componentes))
-      }
-
-      // Agregar imágenes al form data
-      images.forEach((file) => {
-        formData.append('imagenes', file)
-      })
-
-      await publicationsApi.createPublication(formData, token)
       setSuccess(true)
       setError(null)
-
       // Limpiar formulario
       setTitulo('')
       setDescripcion('')
       setPrecio('')
+      setCondicion('Buen estado')
       setComponentes([])
       setImages([])
       setImagePreviews([])
@@ -232,10 +283,11 @@ export default function CreatePublication({ onBack }: { onBack?: () => void }) {
     return (
       <div className="publication-container text-center">
         <CheckCircle size={64} color="#10b981" style={{ margin: '0 auto 20px' }} />
-        <h2 className="publication-title">¡Publicación Creada!</h2>
+        <h2 className="publication-title">{editId ? '¡Publicación Guardada!' : '¡Publicación Creada!'}</h2>
         <p className="publication-subtitle">
-          El artículo ha sido registrado en la plataforma exitosamente y ya es visible en el
-          catálogo.
+          {editId
+            ? 'Los cambios se han guardado con éxito y ya están actualizados en el catálogo.'
+            : 'El artículo ha sido registrado en la plataforma exitosamente y ya es visible en el catálogo.'}
         </p>
         <button
           className="submit-btn"
@@ -270,9 +322,11 @@ export default function CreatePublication({ onBack }: { onBack?: () => void }) {
         </button>
       )}
 
-      <h1 className="publication-title">Publicar Artículo</h1>
+      <h1 className="publication-title">{editId ? 'Editar Artículo' : 'Publicar Artículo'}</h1>
       <p className="publication-subtitle">
-        Comparte tu equipo tecnológico en desuso para darle una segunda vida.
+        {editId
+          ? 'Actualiza los datos de tu artículo publicado.'
+          : 'Comparte tu equipo tecnológico en desuso para darle una segunda vida.'}
       </p>
 
       {error && <div className="error-banner">{error}</div>}
@@ -304,6 +358,22 @@ export default function CreatePublication({ onBack }: { onBack?: () => void }) {
               rows={4}
               required
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="condicion">Condición General del Artículo</label>
+            <select
+              id="condicion"
+              value={condicion}
+              onChange={(e) => setCondicion(e.target.value)}
+              required
+            >
+              <option value="Nuevo">Nuevo</option>
+              <option value="Como nuevo">Como nuevo</option>
+              <option value="Buen estado">Buen estado</option>
+              <option value="Aceptable">Aceptable</option>
+              <option value="Para piezas / Dañado">Para piezas / Dañado</option>
+            </select>
           </div>
 
           <div className="form-row">
@@ -353,117 +423,121 @@ export default function CreatePublication({ onBack }: { onBack?: () => void }) {
           )}
         </div>
 
-        {/* Sección 2: Desglose de Componentes (Hardware Mining) */}
-        <div className="form-section">
-          <h2 className="section-title">Desglose de Componentes (Hardware Mining)</h2>
-          <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '16px' }}>
-            Especifica cuáles piezas internas aún sirven. Esto ayuda a los reparadores a encontrar
-            materia prima útil.
-          </p>
+        {!editId && (
+          <>
+            {/* Sección 2: Desglose de Componentes (Hardware Mining) */}
+            <div className="form-section">
+              <h2 className="section-title">Desglose de Componentes (Hardware Mining)</h2>
+              <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '16px' }}>
+                Especifica cuáles piezas internas aún sirven. Esto ayuda a los reparadores a encontrar
+                materia prima útil.
+              </p>
 
-          {componentes.map((comp, idx) => (
-            <div key={idx} className="component-card">
-              <div className="component-row">
-                <div className="form-group" style={{ marginBottom: 0 }}>
+              {componentes.map((comp, idx) => (
+                <div key={idx} className="component-card">
+                  <div className="component-row">
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <input
+                        type="text"
+                        placeholder="Nombre del componente (Ej: Memoria RAM 8GB)"
+                        value={comp.nombre}
+                        onChange={(e) => handleComponentChange(idx, 'nombre', e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <select
+                        value={comp.funcional ? 'true' : 'false'}
+                        onChange={(e) =>
+                          handleComponentChange(idx, 'funcional', e.target.value === 'true')
+                        }
+                      >
+                        <option value="true">Funcional</option>
+                        <option value="false">Dañado / No verificado</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {modalidad === 'VENTA_PIEZAS' && (
+                        <input
+                          type="number"
+                          placeholder="$ Pieza"
+                          value={comp.precioPieza || ''}
+                          onChange={(e) =>
+                            handleComponentChange(
+                              idx,
+                              'precioPieza',
+                              e.target.value ? parseFloat(e.target.value) : undefined
+                            )
+                          }
+                          style={{ width: '80px' }}
+                          required
+                        />
+                      )}
+
+                      <button type="button" className="remove-btn" onClick={() => removeComponent(idx)}>
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+
                   <input
                     type="text"
-                    placeholder="Nombre del componente (Ej: Memoria RAM 8GB)"
-                    value={comp.nombre}
-                    onChange={(e) => handleComponentChange(idx, 'nombre', e.target.value)}
-                    required
+                    placeholder="Descripción del estado del componente (Opcional)"
+                    value={comp.descripcion}
+                    onChange={(e) => handleComponentChange(idx, 'descripcion', e.target.value)}
+                    style={{ fontSize: '0.85rem', padding: '8px 12px' }}
                   />
                 </div>
+              ))}
 
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <select
-                    value={comp.funcional ? 'true' : 'false'}
-                    onChange={(e) =>
-                      handleComponentChange(idx, 'funcional', e.target.value === 'true')
-                    }
-                  >
-                    <option value="true">Funcional</option>
-                    <option value="false">Dañado / No verificado</option>
-                  </select>
-                </div>
+              <button type="button" className="add-btn" onClick={addComponent}>
+                <Plus size={18} /> Agregar componente al desglose
+              </button>
+            </div>
 
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {modalidad === 'VENTA_PIEZAS' && (
-                    <input
-                      type="number"
-                      placeholder="$ Pieza"
-                      value={comp.precioPieza || ''}
-                      onChange={(e) =>
-                        handleComponentChange(
-                          idx,
-                          'precioPieza',
-                          e.target.value ? parseFloat(e.target.value) : undefined
-                        )
-                      }
-                      style={{ width: '80px' }}
-                      required
-                    />
-                  )}
+            {/* Sección 3: Imágenes */}
+            <div className="form-section">
+              <h2 className="section-title">Imágenes del Artículo</h2>
 
-                  <button type="button" className="remove-btn" onClick={() => removeComponent(idx)}>
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+              <div className="image-upload-zone" onClick={() => fileInputRef.current?.click()}>
+                <Upload size={32} color="#10b981" style={{ margin: '0 auto 10px' }} />
+                <p>Haz clic para subir hasta 10 imágenes</p>
+                <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                  Solo se permiten archivos JPG, PNG o WebP menores a 5MB.
+                </span>
               </div>
 
               <input
-                type="text"
-                placeholder="Descripción del estado del componente (Opcional)"
-                value={comp.descripcion}
-                onChange={(e) => handleComponentChange(idx, 'descripcion', e.target.value)}
-                style={{ fontSize: '0.85rem', padding: '8px 12px' }}
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                multiple
+                accept="image/*"
+                style={{ display: 'none' }}
               />
-            </div>
-          ))}
 
-          <button type="button" className="add-btn" onClick={addComponent}>
-            <Plus size={18} /> Agregar componente al desglose
-          </button>
-        </div>
-
-        {/* Sección 3: Imágenes */}
-        <div className="form-section">
-          <h2 className="section-title">Imágenes del Artículo</h2>
-
-          <div className="image-upload-zone" onClick={() => fileInputRef.current?.click()}>
-            <Upload size={32} color="#10b981" style={{ margin: '0 auto 10px' }} />
-            <p>Haz clic para subir hasta 10 imágenes</p>
-            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-              Solo se permiten archivos JPG, PNG o WebP menores a 5MB.
-            </span>
-          </div>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImageChange}
-            multiple
-            accept="image/*"
-            style={{ display: 'none' }}
-          />
-
-          {imagePreviews.length > 0 && (
-            <div className="image-grid">
-              {imagePreviews.map((prev, idx) => (
-                <div key={idx} className={`image-thumb-container ${idx === 0 ? 'main' : ''}`}>
-                  <img src={prev} className="image-thumb" alt={`Subida ${idx}`} />
-                  {idx === 0 && <span className="image-badge">Portada</span>}
-                  <button
-                    type="button"
-                    className="image-delete-badge"
-                    onClick={() => removeImage(idx)}
-                  >
-                    ×
-                  </button>
+              {imagePreviews.length > 0 && (
+                <div className="image-grid">
+                  {imagePreviews.map((prev, idx) => (
+                    <div key={idx} className={`image-thumb-container ${idx === 0 ? 'main' : ''}`}>
+                      <img src={prev} className="image-thumb" alt={`Subida ${idx}`} />
+                      {idx === 0 && <span className="image-badge">Portada</span>}
+                      <button
+                        type="button"
+                        className="image-delete-badge"
+                        onClick={() => removeImage(idx)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         {/* Sección 4: Ubicación */}
         <div className="form-section">
@@ -497,7 +571,7 @@ export default function CreatePublication({ onBack }: { onBack?: () => void }) {
         </div>
 
         <button type="submit" className="submit-btn" disabled={loading}>
-          {loading ? 'Publicando...' : 'Publicar Artículo'}
+          {loading ? (editId ? 'Guardando...' : 'Publicando...') : (editId ? 'Guardar Cambios' : 'Publicar Artículo')}
         </button>
       </form>
     </div>
