@@ -7,6 +7,7 @@ import PublicationDetails from './modules/publications/pages/PublicationDetails'
 import TransactionsDashboard from './modules/publications/pages/TransactionsDashboard'
 import { Plus, Search, MapPin, RefreshCw, SlidersHorizontal, Info, LogOut } from 'lucide-react'
 import { useAuthStore } from './store/authStore'
+import { NotificationBell } from './modules/notifications/components/NotificationBell'
 import './App.css'
 
 const CATEGORIAS = [
@@ -26,7 +27,7 @@ const CATEGORIAS = [
 ]
 
 function App() {
-  const { user, clearSession } = useAuthStore()
+  const { user, token, clearSession } = useAuthStore()
   const [view, setView] = useState<'list' | 'create' | 'details' | 'edit' | 'tratos'>('list')
   const [activePublicationId, setActivePublicationId] = useState<string>('')
 
@@ -210,6 +211,7 @@ function App() {
             Mis Tratos
           </span>
           <span className="user-status">👤 {user?.nombre || 'Usuario'} ({user?.rol === 'REPARADOR_VERIFICADO' ? 'Reparador' : user?.rol === 'ADMINISTRADOR' ? 'Admin' : 'Usuario'})</span>
+          <NotificationBell token={token} />
           <button
             onClick={() => {
               clearSession()

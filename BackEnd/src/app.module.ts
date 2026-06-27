@@ -14,7 +14,7 @@ import { HistoryModule } from './modules/history/history.module';
 // Los siguientes módulos se implementan en futuros sprints:
 // import { MatchmakingModule }    from './modules/matchmaking/matchmaking.module';
 // import { ReputationModule }     from './modules/reputation/reputation.module';
-// import { NotificationsModule }  from './modules/notifications/notifications.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -48,6 +48,9 @@ import { HistoryModule } from './modules/history/history.module';
 
     // ── RF-05: Historial de vida del producto ────────────────────────────────
     HistoryModule,
+
+    // ── RF-07: Notificaciones ────────────────────────────────────────────────
+    NotificationsModule,
   ],
 })
 export class AppModule {}
